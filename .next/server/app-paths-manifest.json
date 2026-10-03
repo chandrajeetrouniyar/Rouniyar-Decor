@@ -1,0 +1,11 @@
+{
+  "/shop/[category]/page": "app/shop/[category]/page.js",
+  "/api/orders/route": "app/api/orders/route.js",
+  "/api/payments/verify/route": "app/api/payments/verify/route.js",
+  "/product/[slug]/page": "app/product/[slug]/page.js",
+  "/api/payments/create/route": "app/api/payments/create/route.js",
+  "/checkout/page": "app/checkout/page.js",
+  "/cart/page": "app/cart/page.js",
+  "/page": "app/page.js",
+  "/order-success/page": "app/order-success/page.js"
+}

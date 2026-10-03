@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  phone         String?
+  role          String         @default("CUSTOMER") // "CUSTOMER" or "ADMIN"
+  avatar        String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  addresses     Address[]
+  orders        Order[]
+  reviews       Review[]
+  wishlist      WishlistItem[]
+  cart          Cart?
+  couponUsages  CouponUsage[]
+
+  @@index([email])
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  mobile      String
+  houseFlat   String
+  street      String
+  area        String
+  city        String
+  state       String
+  pincode     String
+  landmark    String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  image       String
+  active      Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@index([slug])
+}
+
+model Product {
+  id                String           @id @default(cuid())
+  name              String
+  slug              String           @unique
+  description       String
+  shortDescription  String?
+  categoryId        String
+  brand             String           @default("Rouniyar Decor")
+  sku               String           @unique
+  price             Float
+  mrp               Float
+  discount          Float            @default(0)
+  stock             Int              @default(10)
+  lowStockThreshold Int              @default(3)
+  images            String           // JSON string array of image URLs
+  thumbnail         String
+  colors            String           // JSON string array of colors
+  material          String?
+  dimensions        String?
+  weight            String?
+  careInstructions  String?
+  tags              String           // JSON string array of tags
+  featured          Boolean          @default(false)
+  bestSeller        Boolean          @default(false)
+  newArrival        Boolean          @default(false)
+  active            Boolean          @default(true)
+  rating            Float            @default(4.8)
+  reviewCount       Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  category          Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  variants          ProductVariant[]
+  orderItems        OrderItem[]
+  cartItems         CartItem[]
+  wishlistItems     WishlistItem[]
+  reviews           Review[]
+
+  @@index([slug])
+  @@index([sku])
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([featured])
+}
+
+model ProductVariant {
+  id          String      @id @default(cuid())
+  productId   String
+  name        String
+  sku         String      @unique
+  price       Float
+  mrp         Float
+  stock       Int         @default(5)
+  color       String?
+  size        String?
+  image       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+}
+
+model Cart {
+  id          String     @id @default(cuid())
+  userId      String?    @unique
+  sessionId   String?    @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       CartItem[]
+}
+
+model CartItem {
+  id          String          @id @default(cuid())
+  cartId      String
+  productId   String
+  variantId   String?
+  quantity    Int             @default(1)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  cart        Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([cartId, productId, variantId])
+}
+
+model WishlistItem {
+  id          String   @id @default(cuid())
+  userId      String
+  productId   String
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  orderNumber        String      @unique
+  userId             String?
+  customerName       String
+  customerEmail      String
+  customerMobile     String
+  shippingAddress    String      // JSON stringified address
+  deliveryMethod     String      @default("Standard Delivery (3-5 Days)")
+  paymentMethod      String      // "Razorpay", "UPI", "Card", "COD"
+  paymentStatus      String      @default("PENDING") // "PENDING", "PAID", "FAILED", "REFUNDED"
+  orderStatus        String      @default("PLACED") // "PLACED", "CONFIRMED", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "RETURNED"
+  subtotal           Float
+  discount           Float       @default(0)
+  couponCode         String?
+  shippingFee        Float       @default(0)
+  tax                Float       @default(0)
+  total              Float
+  razorpayOrderId    String?
+  razorpayPaymentId  String?
+  notes              String?
+  trackingNumber     String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  user               User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+  payments           Payment[]
+  couponUsages       CouponUsage[]
+
+  @@index([orderNumber])
+  @@index([customerEmail])
+  @@index([orderStatus])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String          @id @default(cuid())
+  orderId     String
+  productId   String
+  variantId   String?
+  name        String
+  sku         String
+  price       Float
+  quantity    Int
+  image       String
+  color       String?
+  size        String?
+  createdAt   DateTime        @default(now())
+
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  orderId         String
+  amount          Float
+  currency        String   @default("INR")
+  status          String   // "SUCCESS", "PENDING", "FAILED"
+  method          String   // "RAZORPAY", "UPI", "CARD", "COD"
+  transactionId   String?
+  rawResponse     String?  // JSON string
+  createdAt       DateTime @default(now())
+
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  productId     String
+  userId        String?
+  customerName  String
+  rating        Int
+  title         String?
+  comment       String
+  approved      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([approved])
+}
+
+model Coupon {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  description   String
+  discountType  String        @default("PERCENTAGE") // "PERCENTAGE" or "FLAT"
+  discountValue Float
+  minOrderValue Float         @default(0)
+  maxDiscount   Float?
+  expiryDate    DateTime?
+  usageLimit    Int?
+  usedCount     Int           @default(0)
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  usages        CouponUsage[]
+
+  @@index([code])
+  @@index([active])
+}
+
+model CouponUsage {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String?
+  orderId   String
+  usedAt    DateTime @default(now())
+
+  coupon    Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
